@@ -1,0 +1,84 @@
+apiVersion: gateway.kyma-project.io/v1beta1
+kind: APIRule
+metadata:
+  creationTimestamp: '2023-04-30T12:33:50Z'
+  finalizers:
+    - gateway.kyma-project.io/subresources
+  generation: 7
+  labels:
+    app.kubernetes.io/name: gigya-on-before-register
+  managedFields:
+    - apiVersion: gateway.kyma-project.io/v1beta1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:finalizers:
+            .: {}
+            v:"gateway.kyma-project.io/subresources": {}
+      manager: manager
+      operation: Update
+      time: '2023-04-30T12:33:50Z'
+    - apiVersion: gateway.kyma-project.io/v1beta1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:labels:
+            .: {}
+            f:app.kubernetes.io/name: {}
+        f:spec:
+          .: {}
+          f:gateway: {}
+          f:host: {}
+          f:rules: {}
+          f:service:
+            .: {}
+            f:name: {}
+            f:port: {}
+      manager: Mozilla
+      operation: Update
+      time: '2023-04-30T13:37:17Z'
+    - apiVersion: gateway.kyma-project.io/v1beta1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          .: {}
+          f:APIRuleStatus:
+            .: {}
+            f:code: {}
+          f:accessRuleStatus:
+            .: {}
+            f:code: {}
+          f:lastProcessedTime: {}
+          f:observedGeneration: {}
+          f:virtualServiceStatus:
+            .: {}
+            f:code: {}
+      manager: manager
+      operation: Update
+      subresource: status
+      time: '2023-05-02T08:34:55Z'
+  name: gigya-on-before-register
+  namespace: gigya-kyma-extensions
+  resourceVersion: '1335835'
+  uid: 73b7ca8e-ba2f-4798-bfba-49c1e46f1254
+spec:
+  gateway: kyma-gateway.kyma-system.svc.cluster.local
+  host: gigya.c-2f1e350.kyma.ondemand.com
+  rules:
+    - accessStrategies:
+        - handler: allow
+      methods:
+        - GET
+      path: /.*
+  service:
+    name: test
+    port: 80
+status:
+  APIRuleStatus:
+    code: OK
+  accessRuleStatus:
+    code: OK
+  lastProcessedTime: '2023-05-02T08:34:55Z'
+  observedGeneration: 7
+  virtualServiceStatus:
+    code: OK

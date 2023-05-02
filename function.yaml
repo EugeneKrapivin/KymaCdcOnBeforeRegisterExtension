@@ -1,0 +1,87 @@
+apiVersion: serverless.kyma-project.io/v1alpha2
+kind: Function
+metadata:
+  creationTimestamp: '2023-04-30T14:39:28Z'
+  generation: 19
+  labels:
+    app.kubernetes.io/name: test
+  managedFields:
+    - apiVersion: serverless.kyma-project.io/v1alpha2
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:labels:
+            .: {}
+            f:app.kubernetes.io/name: {}
+        f:spec:
+          .: {}
+          f:resourceConfiguration:
+            .: {}
+            f:function:
+              .: {}
+              f:profile: {}
+          f:runtime: {}
+          f:source:
+            .: {}
+            f:inline:
+              .: {}
+              f:dependencies: {}
+              f:source: {}
+      manager: Mozilla
+      operation: Update
+      time: '2023-05-01T12:42:45Z'
+    - apiVersion: serverless.kyma-project.io/v1alpha2
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          .: {}
+          f:conditions: {}
+          f:podSelector: {}
+          f:replicas: {}
+          f:runtime: {}
+      manager: manager
+      operation: Update
+      subresource: status
+      time: '2023-05-02T08:14:39Z'
+  name: test
+  namespace: gigya-kyma-extensions
+  resourceVersion: '1326467'
+  uid: be98c385-203b-4937-a343-57f2a050349f
+spec:
+  replicas: 1
+  resourceConfiguration:
+    function:
+      profile: XS
+      resources:
+        limits:
+          cpu: 100m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+  runtime: nodejs16
+  source:
+    inline:
+      dependencies: "{\r\n  \"name\": \"my-cloud-function\",\r\n  \"version\": \"1.0.0\",\r\n  \"description\": \"My Cloud Function\",\r\n  \"dependencies\": {\r\n    \"axios\": \"^0.24.0\",\r\n    \"jsonwebtoken\": \"^8.5.1\",\r\n    \"rsa-pem-from-mod-exp\": \"^0.8.5\"\r\n  }\r\n}"
+      source: "const axios = require('axios').default;\nconst jwt = require('jsonwebtoken');\nconst getPem = require(\"rsa-pem-from-mod-exp\");\n\n/*\naxios.interceptors.request.use(request => {\n\tconsole.log('Request:', JSON.stringify(request, null, 2));\n\treturn request\n})\n\n// Interceptor to log the response\naxios.interceptors.response.use(response => {\n\tconsole.log('Response:', response);\n\treturn response\n})\n*/\n\nasync function refreshPublicKey(kid) {\n\tlet response = await getJWTPublicKey();\n\tif (response?.status === 200 && response.data?.statusCode === 200) {\n\t\tfor (const [key, value] of Object.entries(response.data.keys)) {\n\t\t\tif (kid === value.kid) {\n\t\t\t\treturn {\n\t\t\t\t\tn: value.n,\n\t\t\t\t\te: value.e\n\t\t\t\t};\n\t\t\t}\n\t\t}\n\t}\n\treturn {\n\t\tn: null,\n\t\te: null\n\t};\n}\n\nasync function getJWTPublicKey() {\n\treturn await axios({\n\t\tmethod: \"get\",\n\t\turl: \"https://accounts.us1.gigya.com/accounts.getJWTPublicKey\",\n\t\tparams: {\n\t\t\tV2: \"true\"\n\t\t}\n\t});\n}\n\nasync function verifyJWT(sigJwt, n, e) {\n\treturn await jwt.verify(sigJwt, getPem(n, e), {\n\t\talgorithms: [\"RS256\"]\n\t}, function(err, payload) {\n\t\tif (err) {\n\t\t\tconsole.log(\"Error validating the JWT. \", err);\n\t\t\treturn false;\n\t\t} else if (payload) {\n\t\t\tconsole.log(\"Validated payload: \", JSON.stringify(payload));\n\t\t\treturn true;\n\t\t}\n\t});\n}\n\nasync function validatePassword(password) {\n\tif (password == 'testtest') {\n\t\treturn {\n\t\t\tsuccess: false,\n\t\t\terrors: [\"you are using a bad bad password\"]\n\t\t};\n\t}\n\n\treturn {\n\t\tsuccess: true,\n\t\terrors: []\n\t};\n}\n\nasync function handleExtension(event, context) {\n\tlet responseBody = { status: \"OK\" };\n\n\tif (event?.data?.jws == false) {\n\t\tthrow new Error('data is empty');\n\t}\n\n\ttry {\n\t\tlet decoded = await jwt.decode(event.data.jws, { complete: true });\n\n\t\tconst {n, e} = await refreshPublicKey(decoded.header.kid);\n\t\tif (!n && !e) {\n\t\t\tthrow new Error('Invalid kid');\n\t\t}\n\n\t\t// Validate the JSON Web Token\n\t\tconst verified = await verifyJWT(event.data.jws, n, e);\n\t\tif (!verified) {\n\t\t\tthrow new Error('The JWT could not be validated.');\n\t\t}\n\n\t\tlet extensionPoint = decoded.payload.extensionPoint;\n\t\tlet data = decoded.payload.data;\n\n\t\tswitch (extensionPoint) {\n\t\t\tcase 'OnBeforeAccountsRegister':\n\t\t\t\tlet { success, errors } = await validatePassword(data.params.password);\n\n\t\t\t\tif (!success) {\n\t\t\t\t\tresponseBody.status = \"FAIL\";\n\t\t\t\t\tresponseBody.data = {\n\t\t\t\t\tvalidationErrors: errors.map(error => {\n\t\t\t\t\t\treturn {\n\t\t\t\t\t\t\tfieldName: \"password\",\n\t\t\t\t\t\t\tmessage: error\n\t\t\t\t\t\t};\n\t\t\t\t\t})};\n\t\t\t    }\n\t\t\t\tbreak;\n\t\t\tdefault:\n\t\t\t\tthrow new Error('extension point not supported');\n\t\t}\n\t} catch (error) {\n\t\tconsole.error('error:', error);\n\t\tresponseBody.status = \"FAIL\";\n\t\tresponseBody.data = {\n\t\t\tvalidationErrors: [{\n\t\t\t\tfieldName: \"error\",\n\t\t\t\tmessage: error\n\t\t\t}]\n\t\t};\n\t} finally {\n\t\treturn responseBody;\n\t}\n}\n\nmodule.exports = {\n\tmain: async function(event, context) {\n\t\tconst response = event.extensions.response;\n\t\tif (!event?.data?.jws) {\n\t\t\tresponse.status(400).send({\n\t\t\t\tstatus: \"FAIL\",\n\t\t\t\tdata: {\n\t\t\t\t\tvalidationErrors: [{\n\t\t\t\t\t\tfieldName: \"jws\",\n\t\t\t\t\t\tmessage: \"empty event body\"\n\t\t\t\t\t}]\n\t\t\t\t}\n\t\t\t});\n\t\t}\n\t\ttry {\n\t\t\tlet result = await handleExtension(event, context);\n\t\t\tconsole.log(\"writing result: \" + JSON.stringify(result));\n\t\t\tresponse.status(200).send(result);\n\t\t} catch (err) {\n\t\t\tresponse.status(200).send({\n\t\t\t\tstatus: \"FAIL\",\n\t\t\t\terrors: [JSON.stringify(err)]\n\t\t\t});\n\t\t}\n\t}\n}"
+status:
+  conditions:
+    - lastTransitionTime: '2023-05-02T08:14:38Z'
+      message: Deployment test-q6g9g is ready
+      reason: DeploymentReady
+      status: 'True'
+      type: Running
+    - lastTransitionTime: '2023-05-01T12:43:09Z'
+      message: Job test-build-dwpxd finished
+      reason: JobFinished
+      status: 'True'
+      type: BuildReady
+    - lastTransitionTime: '2023-05-01T12:42:45Z'
+      message: 'Updated ConfigMap: "test-p4b5f"'
+      reason: ConfigMapUpdated
+      status: 'True'
+      type: ConfigurationReady
+  podSelector: >-
+    serverless.kyma-project.io/function-name=test,serverless.kyma-project.io/managed-by=function-controller,serverless.kyma-project.io/resource=deployment,serverless.kyma-project.io/uuid=be98c385-203b-4937-a343-57f2a050349f
+  replicas: 1
+  runtime: nodejs16
